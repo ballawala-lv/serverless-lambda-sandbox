@@ -1,0 +1,57 @@
+service: acloudserverless
+
+frameworkVersion: ">=1.7.0 <2.0.0"
+provider: 
+  name: aws
+  runtime: nodejs8.10
+  environment:
+    SLS_STAGE: ${opt:stage, self:provider.stage} #stage that is passed from command line or set at provider level. Provider level stage defaults to dev
+  iamRoleStatements:
+    - Action:
+        - dynamodb:GetItem
+      Resource: "arn:aws:dynamodb:us-east-1:614167019250:table/dev-shortened-urls"
+      Effect: Allow
+
+functions:
+  hello: #function called hello
+    handler: handler.greet #javascriptfile.name
+  main:
+    handler: main/index.handler
+    events:
+      - http:
+          path: /
+          method: get
+  create:
+    handler: create/index.handler
+    environment:
+      HOST: n6nzkmffti.execute-api.us-east-1.amazonaws.com/dev
+    events:
+      - http:
+          path: /
+          method: post
+  redirect:
+    handler: redirect/index.handler
+    environment:
+      URL_INSTALL: 'http://google.com'
+      URL_LH: 'http://lifehacker.com'
+    events:
+      - http:
+          path: /{slug} #path parameter
+          method: get
+resources:
+  Resources:
+    # BilalTestBucket: logicalId which is unique within a template
+    #   Type: "AWS::S3::Bucket"
+    LinkDB:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: slug
+            AttributeType: S
+        KeySchema:
+          - AttributeName: slug
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+        TableName: "${opt:stage, self:provider.stage}-shortened-urls"    
